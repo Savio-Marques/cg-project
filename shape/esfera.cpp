@@ -1,34 +1,45 @@
 #include "esfera.h"
+#include <cmath>
 
-Esfera::Esfera(const Vec3& c, double r, const Material& m) : centro(c), raio(r) { 
+// Construtor: Apenas guarda raio e material
+Esfera::Esfera(double r, const Material& m) : raio(r) { 
     mat = m; 
 }
 
-// Equação de intersecção da esfera
-bool Esfera::intersecta(const Ray& r, double t_min, double t_max, HitRecord& rec) const {
-    Vec3 oc = r.origem - centro;
+bool Esfera::intersectaLocal(const Ray& r, double t_min, double t_max, HitRecord& rec) const {
+    // No espaço local, a esfera está sempre centrada na origem (0,0,0)
+    // Então o vetor "Origem - Centro" é apenas "Origem"
+    Vec3 oc = r.origem; // Equivale a: r.origem - Vec3(0,0,0)
 
     double a = r.direcao.dot(r.direcao);
     double b = 2.0 * oc.dot(r.direcao);
     double c_val = oc.dot(oc) - raio*raio;
 
-    // Calcula a raiz para saber os pontos de acerto
     double discriminante = b*b - 4*a*c_val;
+
     if (discriminante > 0) {
-        double temp = (-b - sqrt(discriminante)) / (2.0*a);
+        double sqrtDelta = sqrt(discriminante);
+
+        // Tentativa 1: Raiz menor (entrada na esfera)
+        double temp = (-b - sqrtDelta) / (2.0*a);
         if (temp < t_max && temp > t_min) {
             rec.t = temp;
             rec.ponto = r.origem + r.direcao * rec.t;
-            rec.normal = (rec.ponto - centro).normalize();
+            
+            // Normal Local: (Ponto - 0,0,0) normalizado
+            rec.normal = rec.ponto.normalize(); 
             rec.mat = mat;
+            
+            // Se precisar de textura esférica no futuro, o cálculo de UV seria aqui
             return true;
         }
 
-        temp = (-b + sqrt(discriminante)) / (2.0*a);
+        // Tentativa 2: Raiz maior (saída da esfera)
+        temp = (-b + sqrtDelta) / (2.0*a);
         if (temp < t_max && temp > t_min) {
             rec.t = temp;
             rec.ponto = r.origem + r.direcao * rec.t;
-            rec.normal = (rec.ponto - centro).normalize();
+            rec.normal = rec.ponto.normalize();
             rec.mat = mat;
             return true;
         }

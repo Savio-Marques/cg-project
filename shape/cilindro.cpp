@@ -1,102 +1,104 @@
 #include "cilindro.h"
 #include <cmath>
+#include <algorithm> // Para std::min/max se precisar
 
-Cilindro::Cilindro(const Vec3& b, const Vec3& axis, double r, double h, const Material& m) 
-    : base(b), eixo(axis.normalize()), raio(r), altura(h) { 
+Cilindro::Cilindro(double r, double h, const Material& m) 
+    : raio(r), altura(h) { 
     mat = m; 
 }
 
-bool Cilindro::intersectaDisco(const Ray& r, const Vec3& centroDisco, const Vec3& normalDisco, double& t_out) const {
-    double denom = normalDisco.dot(r.direcao);
-    if (std::abs(denom) < 1e-6) return false;
-    double t = (centroDisco - r.origem).dot(normalDisco) / denom;
-    if (t <= 0) return false;
+// Helper para as tampas (Base e Topo)
+bool Cilindro::intersectaDisco(const Ray& r, double y_plano, const Vec3& normal, double& t_out) const {
+    // Intersecção com plano horizontal (Y constante)
+    // O denominador é simplesmente a componente Y da direção (pois normal é 0,1,0 ou 0,-1,0)
+    double denom = r.direcao.dot(normal);
+
+    if (std::abs(denom) < 1e-6) return false; // Raio paralelo à tampa
+
+    // t = (ponto_plano - origem) . normal / denom
+    // Como o plano é horizontal, isso simplifica para:
+    double t = (y_plano - r.origem.y) / r.direcao.y; // Se normal for (0,1,0)
+    // Nota: O sinal se ajusta sozinho na divisão.
+
+    if (t <= 0) return false; 
     
+    // Verifica se bateu dentro do círculo (Raio 2D no plano XZ)
     Vec3 p = r.origem + r.direcao * t;
-    if ((p - centroDisco).norm() <= raio) {
+    double distQuadrada = p.x*p.x + p.z*p.z; // x² + z² <= r²
+
+    if (distQuadrada <= raio * raio) {
         t_out = t;
         return true;
     }
     return false;
 }
 
-bool Cilindro::intersecta(const Ray& r, double t_min, double t_max, HitRecord& rec) const {
+bool Cilindro::intersectaLocal(const Ray& r, double t_min, double t_max, HitRecord& rec) const {
     bool hit = false;
-        double t_closest = t_max;
+    double t_closest = t_max;
 
-        Vec3 oc = r.origem - base;
+    // --- 1. CORPO DO CILINDRO (Lateral) ---
+    // Equação do cilindro infinito no eixo Y: x² + z² = r²
+    // (Ignoramos o Y na equação quadrática)
+    double a = r.direcao.x * r.direcao.x + r.direcao.z * r.direcao.z;
+    double b = 2.0 * (r.origem.x * r.direcao.x + r.origem.z * r.direcao.z);
+    double c = r.origem.x * r.origem.x + r.origem.z * r.origem.z - raio * raio;
 
-        double rd_dot_a = r.direcao.dot(eixo);
+    double delta = b*b - 4*a*c;
 
-        Vec3 d_perp = r.direcao - eixo * rd_dot_a;
+    if (delta >= 0) {
+        double sqrtDelta = sqrt(delta);
+        double t1 = (-b - sqrtDelta) / (2.0 * a);
+        double t2 = (-b + sqrtDelta) / (2.0 * a);
 
-        double oc_dot_a = oc.dot(eixo);
-
-        Vec3 oc_perp = oc - eixo * oc_dot_a;
-
-        double A = d_perp.dot(d_perp);
-        double B = 2 * d_perp.dot(oc_perp);
-        double C = oc_perp.dot(oc_perp) - raio * raio;
-        double delta = B*B - 4*A*C;
-
-        if (delta >= 0) {
-            double sqrtDelta = sqrt(delta);
-            double t1 = (-B - sqrtDelta) / (2 * A);
-            double t2 = (-B + sqrtDelta) / (2 * A);
-
-            if (t1 > t_min && t1 < t_closest) {
-                double h = (r.origem + r.direcao * t1 - base).dot(eixo);
-
-                if (h >= 0 && h <= altura) {
-                    t_closest = t1;
+        // Lambda para testar a altura (Corte do cilindro finito)
+        auto check_altura = [&](double t) {
+            if (t > t_min && t < t_closest) {
+                double y = r.origem.y + r.direcao.y * t;
+                // O cilindro vai de Y=0 até Y=altura
+                if (y >= 0 && y <= altura) {
+                    t_closest = t;
                     hit = true;
-                    Vec3 p = r.origem + r.direcao * t1;
-                    Vec3 v = p - base;
-                    double proj = v.dot(eixo);
-                    rec.normal = (v - eixo * proj).normalize();
+                    rec.t = t;
+                    rec.ponto = r.origem + r.direcao * t;
+                    
+                    // Normal na lateral: aponta para fora no plano XZ
+                    rec.normal = Vec3{rec.ponto.x, 0, rec.ponto.z}.normalize();
+                    rec.mat = mat;
                 }
             }
+        };
 
-            if (t2 > t_min && t2 < t_closest) {
-                double h = (r.origem + r.direcao * t2 - base).dot(eixo);
-                if (h >= 0 && h <= altura) {
-                    t_closest = t2;
-                    hit = true;
-                    Vec3 p = r.origem + r.direcao * t2;
-                    Vec3 v = p - base;
-                    double proj = v.dot(eixo);
-                    rec.normal = (v - eixo * proj).normalize();
-                }
-            }
-        }
+        check_altura(t1);
+        check_altura(t2);
+    }
 
-        double t_base;
+    // --- 2. TAMPAS (Discos) ---
+    double t_cap;
 
-        if (intersectaDisco(r, base, -eixo, t_base)) {
-            if (t_base > t_min && t_base < t_closest) {
-                t_closest = t_base;
-                rec.normal = -eixo;
-                hit = true;
-            }
-        }
-
-        Vec3 topo = base + eixo * altura;
-
-        double t_topo;
-        if (intersectaDisco(r, topo, eixo, t_topo)) {
-            if (t_topo > t_min && t_topo < t_closest) {
-                t_closest = t_topo;
-                rec.normal = eixo;
-                hit = true;
-            }
-        }
-
-        if (hit) {
-            rec.t = t_closest;
-            rec.ponto = r.origem + r.direcao * rec.t;
+    // Base (Y = 0, Normal aponta para baixo 0,-1,0)
+    if (intersectaDisco(r, 0.0, Vec3{0, -1, 0}, t_cap)) {
+        if (t_cap > t_min && t_cap < t_closest) {
+            t_closest = t_cap;
+            hit = true;
+            rec.t = t_cap;
+            rec.ponto = r.origem + r.direcao * t_cap;
+            rec.normal = Vec3{0, -1, 0};
             rec.mat = mat;
-            return true;
         }
+    }
 
-        return false;
+    // Topo (Y = altura, Normal aponta para cima 0,1,0)
+    if (intersectaDisco(r, altura, Vec3{0, 1, 0}, t_cap)) {
+        if (t_cap > t_min && t_cap < t_closest) {
+            t_closest = t_cap;
+            hit = true;
+            rec.t = t_cap;
+            rec.ponto = r.origem + r.direcao * t_cap;
+            rec.normal = Vec3{0, 1, 0};
+            rec.mat = mat;
+        }
+    }
+
+    return hit;
 }

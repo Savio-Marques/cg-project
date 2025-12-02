@@ -5,11 +5,11 @@
 
 class Esfera : public Objeto {
 public:
-    Vec3 centro;
+
     double raio;
 
-    Esfera(const Vec3& c, double r, const Material& m);
-    virtual bool intersecta(const Ray& r, double t_min, double t_max, HitRecord& rec) const override;
+    Esfera(double r, const Material& m);
+    virtual bool intersectaLocal(const Ray& r, double t_min, double t_max, HitRecord& rec) const override;
 };
 
 #endif

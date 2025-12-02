@@ -5,12 +5,11 @@
 
 class Plano : public Objeto {
 public:
-    Vec3 ponto_plano;
-    Vec3 normal;
+    // Construtor simples (só precisa do material)
+    // O plano é sempre o plano XZ (y=0) no espaço local
+    Plano(const Material& m);
 
-    Plano(const Vec3& p, const Vec3& n, const Material& m);
-
-    virtual bool intersecta(const Ray& raio, double t_min, double t_max, HitRecord& rec) const override;
+    virtual bool intersectaLocal(const Ray& r_local, double t_min, double t_max, HitRecord& rec) const override;
 };
 
 #endif

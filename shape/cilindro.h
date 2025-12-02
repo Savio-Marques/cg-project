@@ -5,16 +5,18 @@
 
 class Cilindro : public Objeto {
 public:
-    Vec3 base;
-    Vec3 eixo;
     double raio;
     double altura;
 
-    Cilindro(const Vec3& b, const Vec3& axis, double r, double h, const Material& m);
+    // Construtor simplificado:
+    // Não pede mais base nem eixo. O cilindro local nasce na origem (0,0,0) subindo no eixo Y.
+    Cilindro(double r, double h, const Material& m);
     
-    bool intersectaDisco(const Ray& r, const Vec3& centroDisco, const Vec3& normalDisco, double& t_out) const;
+    // Função auxiliar interna para testar as tampas
+    bool intersectaDisco(const Ray& r_local, double y_plano, const Vec3& normal, double& t_out) const;
 
-    virtual bool intersecta(const Ray& r, double t_min, double t_max, HitRecord& rec) const override;
+    // Sobrescreve a função local
+    virtual bool intersectaLocal(const Ray& r_local, double t_min, double t_max, HitRecord& rec) const override;
 };
 
 #endif
