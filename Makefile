@@ -1,4 +1,4 @@
 all:
-	g++ main.cpp shape/*.cpp -o renderizador
+	g++ main.cpp shape/*.cpp light/*.cpp -o renderizador
 	./renderizador
 	./viewer

@@ -5,7 +5,7 @@
 #include <cmath>
 
 // ========================================================================
-// INCLUDES ORGANIZADOS POR PASTA
+// 1. INCLUDES
 // ========================================================================
 
 // Estruturas Básicas
@@ -14,6 +14,10 @@
 #include "struct/material.h" 
 #include "struct/objeto.h"
 #include "struct/texture.h"
+#include "struct/light.h"   // <--- NOVO: Estrutura da luz
+
+// Lógica de Renderização
+#include "light/iluminacao.h"     // <--- NOVO: Onde está a matemática pesada
 
 // Formas Geométricas
 #include "shape/esfera.h"
@@ -27,7 +31,9 @@
 // ========================================================================
 
 int main() {
-    // Parâmetros da Câmera
+    // ------------------------------------------------
+    // 1. CONFIGURAÇÃO DA CÂMERA E TELA
+    // ------------------------------------------------
     double wJanela = 60.0;
     double hJanela = 60.0;
     int nCol = 500;
@@ -36,110 +42,112 @@ int main() {
     Vec3 olho = {0, 0, 0};
 
     // ------------------------------------------------
-    // 2. CARREGAMENTO DA TEXTURA
+    // 2. CARREGAMENTO DE TEXTURAS
     // ------------------------------------------------
     Texture texChao;
-    // Certifique-se de que "piso.png" está na mesma pasta do executável ou do main.cpp
     bool carregouTextura = texChao.load("piso.png"); 
-
-    std::vector<Objeto*> cena;
+    
+    // Se quiser adicionar textura para o cubo ou parede, carregue aqui...
 
     // ------------------------------------------------
-    // DEFINIÇÃO DOS MATERIAIS
+    // 3. DEFINIÇÃO DE MATERIAIS
     // ------------------------------------------------
     
-    // Material do Chão (Com Lógica de Textura)
+    // Material do Chão (Texturizado ou Cor Sólida)
     Material mat_piso;
     mat_piso.shininess = 10.0; 
 
     if (carregouTextura) {
         mat_piso.useTexture = true;
-        mat_piso.texturePtr = &texChao; // Aponta para a textura carregada
-        // Ka e Kd base serão substituídos pela cor da imagem no loop
-        mat_piso.Ke = {0.1, 0.1, 0.1}; // Especular baixo (pouco brilho)
+        mat_piso.texturePtr = &texChao; 
+        mat_piso.Ke = {0.1, 0.1, 0.1}; // Brilho especular fraco
     } else {
-        // Fallback: se não achar a imagem, usa cor sólida (Ex: Marrom)
         mat_piso.useTexture = false;
-        mat_piso.Ka = {0.4, 0.2, 0.1}; 
+        mat_piso.Ka = {0.4, 0.2, 0.1}; // Marrom
         mat_piso.Kd = {0.4, 0.2, 0.1};
         mat_piso.Ke = {0.0, 0.0, 0.0};
-        std::cout << "AVISO: Usando cor solida para o chao (piso.png nao encontrado)." << std::endl;
+        std::cout << "AVISO: Usando cor solida para o chao." << std::endl;
     }
 
-    // Paredes
-    Vec3 corParede = {0.686, 0.933, 0.933};
+    // Outros Materiais
+    Vec3 corParede = {0.686, 0.933, 0.933}; // Azul claro
     Material mat_parede = {corParede, corParede, corParede, 10.0};
 
-    // Teto
-    Vec3 corTeto = {0.933, 0.933, 0.933};
+    Vec3 corTeto = {0.933, 0.933, 0.933};   // Branco
     Material mat_teto = {corTeto, corTeto, corTeto, 10.0};
 
-    // Cilindro
-    Vec3 corCil = {0.824, 0.706, 0.549};
+    Vec3 corCil = {0.824, 0.706, 0.549};    // Bege
     Material mat_cilindro = {corCil, corCil, corCil, 50.0};
 
-    // Cone
-    Vec3 corCone = {0.0, 1.0, 0.498};
+    Vec3 corCone = {0.0, 1.0, 0.498};       // Verde Primavera
     Material mat_cone = {corCone, corCone, corCone, 50.0};
 
-    // Cubo
-    Vec3 corCubo = {1.0, 0.078, 0.576};
+    Vec3 corCubo = {1.0, 0.078, 0.576};     // Rosa Choque
     Material mat_cubo = {corCubo, corCubo, corCubo, 50.0};
 
-    // Esfera
-    Vec3 corEsfera = {0.854, 0.647, 0.125};
+    Vec3 corEsfera = {0.854, 0.647, 0.125}; // Dourado
     Material mat_esfera = {corEsfera, corEsfera, corEsfera, 50.0};
 
     // ------------------------------------------------
-    // CRIAÇÃO DOS OBJETOS
+    // 4. MONTAGEM DA CENA (OBJETOS)
     // ------------------------------------------------
+    std::vector<Objeto*> cena;
 
-    // Chão (Usa o material com textura configurado acima)
+    // Paredes, Teto e Chão
     cena.push_back(new Plano({0, -150, 0}, {0, 1, 0}, mat_piso));
-
-    // Paredes
-    cena.push_back(new Plano({200, -150, 0}, {-1, 0, 0}, mat_parede));    // Direita
-    cena.push_back(new Plano({200, -150, -400}, {0, 0, 1}, mat_parede));  // Fundo
-    cena.push_back(new Plano({-200, -150, 0}, {1, 0, 0}, mat_parede));    // Esquerda
-    
-    // Teto
+    cena.push_back(new Plano({200, -150, 0}, {-1, 0, 0}, mat_parede));   // Dir
+    cena.push_back(new Plano({200, -150, -400}, {0, 0, 1}, mat_parede)); // Fundo
+    cena.push_back(new Plano({-200, -150, 0}, {1, 0, 0}, mat_parede));   // Esq
     cena.push_back(new Plano({0, 150, 0}, {0, -1, 0}, mat_teto));
 
-    // Objetos na cena
+    // Objetos
     cena.push_back(new Cilindro({0, -150, -200}, {0, 1, 0}, 5.0, 90.0, mat_cilindro));
     cena.push_back(new Cone({0, -60, -200}, {0, 1, 0}, 90.0, 150.0, mat_cone));
+    
+    // O Cubo novo (Malha de triângulos)
+    // Atenção: Certifique-se que o construtor do cubo.cpp aceita (centro, tamanho, material)
     cena.push_back(new Cubo({0, -150, -165}, 40.0, mat_cubo));
+    
     cena.push_back(new Esfera({0, 95, -200}, 5.0, mat_esfera));
 
     // ------------------------------------------------
-    // LUZES
+    // 5. MONTAGEM DA ILUMINAÇÃO (LUZES)
     // ------------------------------------------------
-    Vec3 IF_Pontual = {0.7, 0.7, 0.7};
-    Vec3 P_F = {-100, 140, -20};
-    Vec3 IF_Ambiente = {0.3, 0.3, 0.3};
+    std::vector<Light> luzes;
+    
+    // Luz Principal (Branca)
+    luzes.push_back(Light{ {-100, 140, -20}, {0.7, 0.7, 0.7} });
+
+    // Exemplo: Adicionando uma segunda luz (azulada) na direita para dar clima
+    // luzes.push_back(Light{ {100, 50, -50}, {0.1, 0.1, 0.4} });
+
+    Vec3 luzAmbiente = {0.3, 0.3, 0.3};
 
     // ------------------------------------------------
-    // RENDERIZAÇÃO
+    // 6. RENDERIZAÇÃO
     // ------------------------------------------------
     std::vector<std::vector<Vec3>> imagem(nLin, std::vector<Vec3>(nCol));
     double Dx = wJanela / nCol;
     double Dy = hJanela / nLin;
 
-    std::cout << "Renderizando cena com textura..." << std::endl;
+    std::cout << "Iniciando renderizacao..." << std::endl;
 
     for (int l = 0; l < nLin; l++) {
+        // Mostra progresso a cada 50 linhas para não ficar ansioso
+        if (l % 50 == 0) std::cout << "Linha: " << l << " de " << nLin << std::endl;
+
         for (int c = 0; c < nCol; c++) {
             
+            // Define o raio para este pixel
             double x = -wJanela / 2.0 + Dx / 2.0 + c * Dx;
             double y =  hJanela / 2.0 - Dy / 2.0 - l * Dy;
-
             Ray raio = {olho, (Vec3{x, y, -dJanela} - olho).normalize()};
 
             HitRecord rec_temp, rec_final;
             bool houve_hit = false;
             double t_mais_proximo = std::numeric_limits<double>::max();
 
-            // Verifica intersecção com todos os objetos
+            // Descobre qual objeto está na frente
             for (const auto& objeto : cena) {
                 if (objeto->intersecta(raio, 0.001, t_mais_proximo, rec_temp)) {
                     houve_hit = true;
@@ -149,71 +157,45 @@ int main() {
             }
 
             if (houve_hit) {
+                // Prepara as cores base (Resolver Textura vs Cor Sólida)
                 Vec3 Ka_atual, Kd_atual, Ke_atual;
-                
-                // 3. LÓGICA DE SELEÇÃO DE COR (TEXTURA vs COR SÓLIDA)
+
                 if (rec_final.mat.useTexture && rec_final.mat.texturePtr != nullptr) {
-                    // Recupera o ponteiro da textura
                     Texture* tex = static_cast<Texture*>(rec_final.mat.texturePtr);
-                    
-                    // Busca a cor na imagem usando as coordenadas UV (calculadas no Plano::intersecta)
                     Vec3 corImagem = tex->getColor(rec_final.u, rec_final.v);
                     
                     Ka_atual = corImagem;
                     Kd_atual = corImagem;
-                    Ke_atual = rec_final.mat.Ke; // Mantém o especular do material
-
+                    Ke_atual = rec_final.mat.Ke; // Especular continua vindo do material
                 } else {
-                    // Material Comum
                     Ka_atual = rec_final.mat.Ka;
                     Kd_atual = rec_final.mat.Kd;
                     Ke_atual = rec_final.mat.Ke;
                 }
 
-                Vec3 corFinal = {0,0,0};
+                // CHAMA A CALCULADORA DE ILUMINAÇÃO (Tudo acontece aqui dentro!)
+                // Ela já calcula sombra, diffuse e specular para todas as luzes
+                Vec3 corCalculada = calcularIluminacao(
+                    raio, 
+                    rec_final, 
+                    cena, 
+                    luzes, 
+                    luzAmbiente, 
+                    Ka_atual, Kd_atual, Ke_atual
+                );
 
-                // Componente Ambiente
-                Vec3 I_amb = IF_Ambiente.hadamard(Ka_atual);
-                corFinal = corFinal + I_amb;
+                imagem[l][c] = corCalculada * 255.0;
 
-                // Sombra
-                Vec3 vetorLuz = (P_F - rec_final.ponto).normalize();
-                double distanciaLuz = (P_F - rec_final.ponto).norm();
-                
-                Ray raioSombra = {rec_final.ponto + rec_final.normal * 1e-3, vetorLuz};
-                bool emSombra = false;
-
-                for (const auto& objeto_sombra : cena) {
-                    if (objeto_sombra->intersecta(raioSombra, 0.001, distanciaLuz, rec_temp)) {
-                        emSombra = true;
-                        break;
-                    }
-                }
-
-                if (!emSombra) {
-                    // Componente Difusa
-                    double dot_l_n = std::max(0.0, vetorLuz.dot(rec_final.normal));
-                    Vec3 I_dif = IF_Pontual.hadamard(Kd_atual) * dot_l_n;
-                    corFinal = corFinal + I_dif;
-
-                    // Componente Especular
-                    Vec3 v = (olho - rec_final.ponto).normalize();
-                    Vec3 r_ref = (rec_final.normal * (2.0 * vetorLuz.dot(rec_final.normal)) - vetorLuz).normalize();
-                    double dot_v_r = std::max(0.0, v.dot(r_ref));
-                    double dot_v_r_m = std::pow(dot_v_r, rec_final.mat.shininess);
-                    
-                    Vec3 I_spec = IF_Pontual.hadamard(Ke_atual) * dot_v_r_m;
-                    corFinal = corFinal + I_spec;
-                }
-                imagem[l][c] = corFinal.clamp(0.0, 1.0) * 255.0;
             } else {
                 imagem[l][c] = {0, 0, 0}; // Fundo preto
             }
         }
     }
     
-    std::cout << "Cena gerada com sucesso! Salvando arquivo..." << std::endl;
-
+    // ------------------------------------------------
+    // 7. SALVAR ARQUIVO
+    // ------------------------------------------------
+    std::cout << "Salvando imagem 'cena.ppm'..." << std::endl;
     std::ofstream arquivoPPM("cena.ppm");
     arquivoPPM << "P3\n" << nCol << " " << nLin << "\n255\n"; 
     for (int l = 0; l < nLin; l++) {
@@ -227,6 +209,7 @@ int main() {
 
     // Limpeza de memória
     for(auto& obj : cena) delete obj;
+    std::cout << "Concluido!" << std::endl;
 
     return 0;
 }
