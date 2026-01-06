@@ -7,15 +7,13 @@
 // ========================================================================
 // 1. INCLUDES
 // ========================================================================
-
 #include "struct/vec3.h"
 #include "struct/ray.h"
 #include "struct/material.h" 
 #include "struct/objeto.h"
 #include "struct/texture.h"
 #include "struct/light.h"
-#include "struct/mat4.h"    // <--- IMPORTANTE: Incluir as matrizes
-
+#include "struct/mat4.h"    
 #include "light/iluminacao.h" 
 
 #include "shape/esfera.h"
@@ -29,157 +27,183 @@
 // ========================================================================
 
 int main() {
-    // 1. CONFIGURAÇÃO DA CÂMERA
-    double wJanela = 60.0;
-    double hJanela = 60.0;
-    int nCol = 500;
+    // --------------------------------------------------
+    // CONFIGURAÇÕES
+    // --------------------------------------------------
+    int nCol = 500; 
     int nLin = 500;
-    double dJanela = 30.0;
-    Vec3 olho = {0, 0, -5};
+    
+    // TIPO DE PROJEÇÃO (Requisito 3)
+    // 0 = Perspectiva (Padrão)
+    // 1 = Ortográfica
+    // 2 = Oblíqua (NOVO)
+    int tipoProjecao = 0; 
 
-    // 2. TEXTURAS
-    Texture texChao;
-    bool carregouTextura = texChao.load("piso.png"); 
+    // CÂMERA (Requisito 1.2 e 2.1)
+    // Posicionada no 1º Octante (X,Y,Z positivos) olhando para o centro da "mesa"
+    Vec3 lookfrom = {120, 100, 200};   
+    Vec3 lookat   = {50, 40, 50};      
+    Vec3 vup      = {0, 1, 0};      
+    
+    double distToFocus = 10.0;     
+    double fov = 45.0; 
 
-    // 3. MATERIAIS
-    Material mat_piso;
-    mat_piso.shininess = 10.0; 
-    if (carregouTextura) {
-        mat_piso.useTexture = true;
-        mat_piso.texturePtr = &texChao; 
-        mat_piso.Ke = {0.1, 0.1, 0.1};
+    // --------------------------------------------------
+    
+    // Matrizes de Câmera
+    Mat4 viewMatrix = Mat4::lookAt(lookfrom, lookat, vup);
+    Mat4 camToWorld = viewMatrix.inverse();
+
+    // Cálculo da Janela
+    double hJanela, wJanela;
+    if (tipoProjecao != 0) { 
+        hJanela = 150.0; // Tamanho fixo (em metros) para Orto/Obliqua
     } else {
-        mat_piso.useTexture = false;
-        mat_piso.Ka = {0.4, 0.2, 0.1}; 
-        mat_piso.Kd = {0.4, 0.2, 0.1};
-        mat_piso.Ke = {0.0, 0.0, 0.0};
+        hJanela = 2.0 * distToFocus * tan((fov / 2.0) * M_PI / 180.0);
     }
+    wJanela = hJanela;
 
-    Vec3 corParede = {0.686, 0.933, 0.933};
-    Material mat_parede = {corParede, corParede, corParede, 10.0};
+    // ==================================================
+    // 2. MATERIAIS
+    // ==================================================
+    
+    Texture texChao;
+    bool carregou = texChao.load("piso.png"); 
+    Material mat_piso;
+    mat_piso.shininess = 30.0; 
+    mat_piso.Ke = {0.2, 0.2, 0.2};
+    if (carregou) { mat_piso.useTexture = true; mat_piso.texturePtr = &texChao; }
+    else { mat_piso.Ka = {0.5, 0.5, 0.5}; mat_piso.Kd = {0.6, 0.6, 0.6}; }
 
-    Vec3 corTeto = {0.933, 0.933, 0.933};
-    Material mat_teto = {corTeto, corTeto, corTeto, 10.0};
+    Material mat_ouro; // Esfera
+    mat_ouro.Ka = {0.24, 0.19, 0.07};
+    mat_ouro.Kd = {0.75, 0.60, 0.22};
+    mat_ouro.Ke = {0.62, 0.55, 0.36};
+    mat_ouro.shininess = 51.2;
 
-    Vec3 corCil = {0.824, 0.706, 0.549};
-    Material mat_cilindro = {corCil, corCil, corCil, 50.0};
+    Material mat_azul; // Cone
+    mat_azul.Ka = {0.0, 0.0, 0.1};
+    mat_azul.Kd = {0.0, 0.0, 0.8};
+    mat_azul.Ke = {1.0, 1.0, 1.0};
+    mat_azul.shininess = 20.0;
 
-    Vec3 corCone = {0.0, 1.0, 0.498};
-    Material mat_cone = {corCone, corCone, corCone, 50.0};
+    Material mat_rubi; // Pilar
+    mat_rubi.Ka = {0.17, 0.01, 0.01};
+    mat_rubi.Kd = {0.61, 0.04, 0.04};
+    mat_rubi.Ke = {0.72, 0.62, 0.62};
+    mat_rubi.shininess = 76.8;
 
-    Vec3 corCubo = {1.0, 0.078, 0.576};
-    Material mat_cubo = {corCubo, corCubo, corCubo, 50.0};
-
-    Vec3 corEsfera = {0.854, 0.647, 0.125};
-    Material mat_esfera = {corEsfera, corEsfera, corEsfera, 50.0};
-
-    // ------------------------------------------------
-    // 4. MONTAGEM DA CENA (COM MATRIZES DE TRANSFORMAÇÃO)
-    // ------------------------------------------------
+    // ==================================================
+    // 3. CENA (Coerência Temática e Positiva)
+    // ==================================================
     std::vector<Objeto*> cena;
 
-    // --- CHÃO ---
-    // Cria plano padrão (XZ) na origem
+    // 1. O Chão (Plano XZ em Y=0)
     Plano* chao = new Plano(mat_piso);
-    // Translada para y = -150
-    chao->setTransform(Mat4::translate(0, -150, 0));
+    chao->setTransform(Mat4::translate(0, 0, 0)); 
     cena.push_back(chao);
 
-    // --- TETO ---
-    Plano* teto = new Plano(mat_teto);
-    // Move pra cima e gira 180 no X para a normal apontar pra baixo
-    Mat4 trTeto = Mat4::translate(0, 150, 0) * Mat4::rotateX(180); 
-    teto->setTransform(trTeto);
-    cena.push_back(teto);
+    // 2. Mesa (Cubo esticado)
+    Cubo* pedestal = new Cubo(20.0, mat_piso); 
+    // X=50, Y=10, Z=50
+    Mat4 trPedestal = Mat4::translate(50, 10, 50) * Mat4::scale(4.0, 1.0, 2.0); 
+    pedestal->setTransform(trPedestal);
+    cena.push_back(pedestal);
 
-    // --- PAREDE FUNDO ---
-    Plano* fundo = new Plano(mat_parede);
-    // Gira 90 no X (fica em pé) e move para trás
-    Mat4 trFundo = Mat4::translate(0, 0, -400) * Mat4::rotateX(90);
-    fundo->setTransform(trFundo);
-    cena.push_back(fundo);
+    // 3. Esfera de Ouro
+    Esfera* bola = new Esfera(15.0, mat_ouro);
+    bola->setTransform(Mat4::translate(50, 35, 50));
+    cena.push_back(bola);
 
-    // --- PAREDE DIREITA ---
-    Plano* dir = new Plano(mat_parede);
-    // Gira 90 no Z e move
-    Mat4 trDir = Mat4::translate(200, 0, 0) * Mat4::rotateZ(90);
-    dir->setTransform(trDir);
-    cena.push_back(dir);
-
-    // --- PAREDE ESQUERDA ---
-    Plano* esq = new Plano(mat_parede);
-    Mat4 trEsq = Mat4::translate(-200, 0, 0) * Mat4::rotateZ(-90);
-    esq->setTransform(trEsq);
-    cena.push_back(esq);
-
-
-    // --- CILINDRO ---
-    // Cria na origem (raio 5, altura 90)
-    Cilindro* cil = new Cilindro(5.0, 90.0, mat_cilindro);
-    // Apenas move para posição final
-    cil->setTransform(Mat4::translate(0, -150, -200));
-    cena.push_back(cil);
-
-
-    // --- CONE ---
-    Cone* cone = new Cone(90.0, 150.0, mat_cone);
-    // Move para posição
-    cone->setTransform(Mat4::translate(0, -60, -200));
+    // 4. Cone Azul (Rotação Arbitrária aqui!)
+    Cone* cone = new Cone(10.0, 30.0, mat_azul);
+    // REQUISITO 1.4.2: Rotaciona 45 graus no eixo diagonal (1, 0, 1)
+    Mat4 trCone = Mat4::translate(20, 40, 50) * Mat4::rotate(45.0, {1, 0, 1}); 
+    cone->setTransform(trCone);
     cena.push_back(cone);
 
+    // 5. Pilar de Rubi (Cilindro)
+    Cilindro* pilar = new Cilindro(5.0, 100.0, mat_rubi);
+    pilar->setTransform(Mat4::translate(100, 0, 0)); 
+    cena.push_back(pilar);
 
-    // --- CUBO (MALHA DE TRIÂNGULOS) ---
-    // Cria centrado na origem com aresta 40
-    Cubo* cubo = new Cubo(40.0, mat_cubo);
-    
-    // AULA 15: Composição de Transformações
-    // Vamos girar o cubo E mover ele.
-    // 1. Matriz de Rotação (45 graus no Y)
-
-    Mat4 rotCubo = Mat4::rotateY(0);
-    // 2. Matriz de Translação
-    Mat4 movCubo = Mat4::translate(0, -150, -165);
-    
-    // Aplica: PRIMEIRO gira, DEPOIS move (multiplicação da direita pra esquerda na teoria, mas aqui depende da implementação do operador*)
-    // Na nossa Mat4::operator*, a ordem de leitura é: (MatrizPai * MatrizFilho)
-    cubo->setTransform(movCubo * rotCubo); 
-    cena.push_back(cubo);
-
-
-    // --- ESFERA ---
-    Esfera* esfera = new Esfera(5.0, mat_esfera);
-    esfera->setTransform(Mat4::translate(0, 95, -200));
-    cena.push_back(esfera);
-
-
-    // 5. LUZES
+    // ==================================================
+    // 4. LUZES
+    // ==================================================
     std::vector<Light> luzes;
-    luzes.push_back(Light{ {-100, 140, -20}, {0.7, 0.7, 0.7} });
-    Vec3 luzAmbiente = {0.3, 0.3, 0.3};
 
+    // Pontual
+    Light lampada;
+    lampada.type = POINT;
+    lampada.position = {50, 100, 50}; 
+    lampada.intensity = {0.6, 0.6, 0.6};
+    luzes.push_back(lampada);
 
-    // 6. RENDERIZAÇÃO
+    // // Spot
+    // Light spot;
+    // spot.type = SPOT;
+    // spot.position = {80, 80, 80};      
+    // spot.direction = {-1, -1, -1}; 
+    // spot.intensity = {1.0, 0.8, 0.0}; 
+    // spot.cutoff = 15; 
+    // luzes.push_back(spot);
+
+    // // Direcional
+    // Light sol;
+    // sol.type = DIRECTIONAL;
+    // sol.direction = {-1, -0.5, 0};   
+    // sol.intensity = {0.3, 0.3, 0.4}; 
+    // luzes.push_back(sol);
+    
+    Vec3 luzAmbiente = {0.2, 0.2, 0.2};
+
+    // ==================================================
+    // 5. RENDERIZAÇÃO
+    // ==================================================
     std::vector<std::vector<Vec3>> imagem(nLin, std::vector<Vec3>(nCol));
     double Dx = wJanela / nCol;
     double Dy = hJanela / nLin;
 
-    std::cout << "Iniciando renderizacao..." << std::endl;
+    std::cout << "Iniciando render..." << std::endl;
+    if (tipoProjecao == 1) std::cout << "Modo: ORTOGRAFICO" << std::endl;
+    else if (tipoProjecao == 2) std::cout << "Modo: OBLIQUO" << std::endl;
+    else std::cout << "Modo: PERSPECTIVA" << std::endl;
 
     for (int l = 0; l < nLin; l++) {
-        if (l % 50 == 0) std::cout << "Linha: " << l << " de " << nLin << std::endl;
-
+        if (l % 50 == 0) std::cout << "Linha: " << l << std::endl;
         for (int c = 0; c < nCol; c++) {
-            double x = -wJanela / 2.0 + Dx / 2.0 + c * Dx;
-            double y =  hJanela / 2.0 - Dy / 2.0 - l * Dy;
-            Ray raio = {olho, (Vec3{x, y, -dJanela} - olho).normalize()};
+            
+            double x_cam = -wJanela / 2.0 + Dx / 2.0 + c * Dx;
+            double y_cam =  hJanela / 2.0 - Dy / 2.0 - l * Dy;
+            
+            Vec3 origem_local, direcao_local;
 
-            HitRecord rec_temp, rec_final;
+            // --- LÓGICA DE PROJEÇÃO ---
+            if (tipoProjecao == 1) { // Ortográfica
+                origem_local = {x_cam, y_cam, 0};
+                direcao_local = {0, 0, -1};
+            } 
+            else if (tipoProjecao == 2) { // Oblíqua (Bonus)
+                origem_local = {x_cam, y_cam, 0};
+                // Direção inclinada: mantemos -1 em Z, mas deslocamos X e Y
+                // Isso faz as laterais dos objetos aparecerem
+                direcao_local = {-0.5, -0.5, -1.0}; 
+            }
+            else { // Perspectiva
+                origem_local = {0, 0, 0};
+                direcao_local = Vec3{x_cam, y_cam, -distToFocus}.normalize();
+            }
+
+            Ray raio;
+            raio.origem = camToWorld.point(origem_local);    
+            raio.direcao = camToWorld.vector(direcao_local).normalize();         
+
+            HitRecord rec_final;
             bool houve_hit = false;
             double t_mais_proximo = std::numeric_limits<double>::max();
 
             for (const auto& objeto : cena) {
-                // AQUI A MÁGICA ACONTECE: 
-                // O método intersecta do Objeto aplica a transformação inversa no raio
+                HitRecord rec_temp;
                 if (objeto->intersecta(raio, 0.001, t_mais_proximo, rec_temp)) {
                     houve_hit = true;
                     t_mais_proximo = rec_temp.t;
@@ -188,46 +212,37 @@ int main() {
             }
 
             if (houve_hit) {
-                Vec3 Ka_atual, Kd_atual, Ke_atual;
-
-                if (rec_final.mat.useTexture && rec_final.mat.texturePtr != nullptr) {
+                Vec3 Ka = rec_final.mat.Ka;
+                Vec3 Kd = rec_final.mat.Kd;
+                if (rec_final.mat.useTexture && rec_final.mat.texturePtr) {
                     Texture* tex = static_cast<Texture*>(rec_final.mat.texturePtr);
-                    Vec3 corImagem = tex->getColor(rec_final.u, rec_final.v);
-                    Ka_atual = corImagem;
-                    Kd_atual = corImagem;
-                    Ke_atual = rec_final.mat.Ke; 
-                } else {
-                    Ka_atual = rec_final.mat.Ka;
-                    Kd_atual = rec_final.mat.Kd;
-                    Ke_atual = rec_final.mat.Ke;
+                    Vec3 texColor = tex->getColor(rec_final.u, rec_final.v);
+                    Ka = texColor; Kd = texColor;
                 }
-
-                Vec3 corCalculada = calcularIluminacao(
-                    raio, rec_final, cena, luzes, luzAmbiente, 
-                    Ka_atual, Kd_atual, Ke_atual
-                );
-
-                imagem[l][c] = corCalculada * 255.0;
+                
+                Vec3 cor = calcularIluminacao(raio, rec_final, cena, luzes, luzAmbiente, Ka, Kd, rec_final.mat.Ke);
+                
+                cor = cor * 255.0;
+                cor.x = std::min(255.0, std::max(0.0, cor.x)); 
+                cor.y = std::min(255.0, std::max(0.0, cor.y)); 
+                cor.z = std::min(255.0, std::max(0.0, cor.z)); 
+                imagem[l][c] = cor;
             } else {
-                imagem[l][c] = {0, 0, 0};
+                imagem[l][c] = {0, 0, 0}; 
             }
         }
     }
     
-    std::cout << "Salvando imagem 'cena.ppm'..." << std::endl;
     std::ofstream arquivoPPM("cena.ppm");
     arquivoPPM << "P3\n" << nCol << " " << nLin << "\n255\n"; 
     for (int l = 0; l < nLin; l++) {
         for (int c = 0; c < nCol; c++) {
-            arquivoPPM << static_cast<int>(imagem[l][c].x) << " "
-                       << static_cast<int>(imagem[l][c].y) << " "
-                       << static_cast<int>(imagem[l][c].z) << "\n";
+            arquivoPPM << (int)imagem[l][c].x << " " << (int)imagem[l][c].y << " " << (int)imagem[l][c].z << "\n";
         }
     }
     arquivoPPM.close();
+    std::cout << "Imagem salva!\n";
 
     for(auto& obj : cena) delete obj;
-    std::cout << "Concluido!" << std::endl;
-
     return 0;
 }

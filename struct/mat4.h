@@ -111,6 +111,22 @@ struct Mat4 {
         return res;
     }
 
+    // Rotação em torno de um eixo arbitrário (axis) por um ângulo (angle em graus)
+    static Mat4 rotate(double angle, Vec3 axis) {
+        Mat4 res;
+        double rad = angle * M_PI / 180.0;
+        double c = cos(rad);
+        double s = sin(rad);
+        double t = 1.0 - c;
+        
+        Vec3 a = axis.normalize(); // O eixo DEVE ser normalizado
+
+        res.m[0][0] = c + a.x*a.x*t;      res.m[0][1] = a.x*a.y*t - a.z*s;  res.m[0][2] = a.x*a.z*t + a.y*s;
+        res.m[1][0] = a.y*a.x*t + a.z*s;  res.m[1][1] = c + a.y*a.y*t;      res.m[1][2] = a.y*a.z*t - a.x*s;
+        res.m[2][0] = a.z*a.x*t - a.y*s;  res.m[2][1] = a.z*a.y*t + a.x*s;  res.m[2][2] = c + a.z*a.z*t;
+        
+        return res;
+    }
     // =============================================================
     // AULA 14: Cisalhamento (Shear)
     // =============================================================
@@ -167,6 +183,40 @@ struct Mat4 {
         Mat4 res;
         k = 0;
         for(int i=0; i<4; i++) for(int j=0; j<4; j++) res.m[i][j] = inv[k++] * det;
+        return res;
+    }
+
+    // =============================================================
+    // SISTEMA DE COORDENADAS DE CÂMERA (LookAt)
+    // =============================================================
+    // Cria a Matriz "World to Camera" (View Matrix)
+    // eye: Onde a câmera está
+    // center: Para onde ela está olhando
+    // up: Qual direção é "pra cima" (geralmente 0,1,0)
+    static Mat4 lookAt(Vec3 eye, Vec3 center, Vec3 up) {
+        // 1. Calcular o vetor W (Z da câmera) - Aponta para TRÁS da visão
+        // (O sistema é mão direita: Z sai da tela em direção ao olho)
+        Vec3 f = (center - eye).normalize(); // Vetor Frente
+        Vec3 w = -f;                         // Vetor Trás (Z camera)
+
+        // 2. Calcular o vetor U (X da câmera) - Aponta para a DIREITA
+        // Produto vetorial entre UP do mundo e o Z da câmera
+        Vec3 u = up.cross(w).normalize();
+
+        // 3. Calcular o vetor V (Y da câmera) - Aponta para CIMA (Ortogonal real)
+        Vec3 v = w.cross(u);
+
+        // 4. Montar a Matriz View (Rotação * Translação)
+        // [ Ux  Uy  Uz  -dot(u, eye) ]
+        // [ Vx  Vy  Vz  -dot(v, eye) ]
+        // [ Wx  Wy  Wz  -dot(w, eye) ]
+        // [  0   0   0       1       ]
+        Mat4 res;
+        res.m[0][0] = u.x; res.m[0][1] = u.y; res.m[0][2] = u.z; res.m[0][3] = -u.dot(eye);
+        res.m[1][0] = v.x; res.m[1][1] = v.y; res.m[1][2] = v.z; res.m[1][3] = -v.dot(eye);
+        res.m[2][0] = w.x; res.m[2][1] = w.y; res.m[2][2] = w.z; res.m[2][3] = -w.dot(eye);
+        res.m[3][0] = 0.0; res.m[3][1] = 0.0; res.m[3][2] = 0.0; res.m[3][3] = 1.0;
+        
         return res;
     }
 };
