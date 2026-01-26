@@ -22,33 +22,33 @@
 #include "shape/cone.h"
 #include "shape/cubo.h"
 
-// ========================================================================
-// MAIN
-// ========================================================================
-
 int main() {
-    // --------------------------------------------------
-    // CONFIGURAÇÕES
-    // --------------------------------------------------
+
+    // --------- Configurações iniciais -----------
+
+    // Número de linhas
     int nCol = 500; 
     int nLin = 500;
     
-    // TIPO DE PROJEÇÃO (Requisito 3)
+    // Tipos de projeção
     // 0 = Perspectiva (Padrão)
     // 1 = Ortográfica
-    // 2 = Oblíqua (NOVO)
+    // 2 = Oblíqua
     int tipoProjecao = 0; 
 
-    // CÂMERA (Requisito 1.2 e 2.1)
-    // Posicionada no 1º Octante (X,Y,Z positivos) olhando para o centro da "mesa"
-    Vec3 lookfrom = {120, 100, 200};   
-    Vec3 lookat   = {50, 40, 50};      
+    // Câmera
+    // Posicionar no primeiro ocatante (X,Y,Z positivos)
+    Vec3 lookfrom = {50, 50, 50};   
+    Vec3 lookat   = {0, 0, 0};      
     Vec3 vup      = {0, 1, 0};      
     
-    double distToFocus = 10.0;     
-    double fov = 45.0; 
+    // Sem diferença estática
+    double distToFocus = 1;
 
-    // --------------------------------------------------
+    // Aumentar (Zoom out)
+    // Diminuir (Zoom in)
+    double fov = 45; 
+
     
     // Matrizes de Câmera
     Mat4 viewMatrix = Mat4::lookAt(lookfrom, lookat, vup);
@@ -63,18 +63,23 @@ int main() {
     }
     wJanela = hJanela;
 
-    // ==================================================
-    // 2. MATERIAIS
-    // ==================================================
+    // --------- Matériais -----------
     
+    //Textura
     Texture texChao;
-    bool carregou = texChao.load("piso.png"); 
     Material mat_piso;
     mat_piso.shininess = 30.0; 
     mat_piso.Ke = {0.2, 0.2, 0.2};
-    if (carregou) { mat_piso.useTexture = true; mat_piso.texturePtr = &texChao; }
-    else { mat_piso.Ka = {0.5, 0.5, 0.5}; mat_piso.Kd = {0.6, 0.6, 0.6}; }
 
+    bool carregou = texChao.load("piso.png");
+    if (carregou) { 
+        mat_piso.useTexture = true; mat_piso.texturePtr = &texChao; 
+    }
+    else { 
+        mat_piso.Ka = {0.5, 0.5, 0.5}; mat_piso.Kd = {0.6, 0.6, 0.6}; 
+    }
+
+    // Tipos de matériais
     Material mat_ouro; // Esfera
     mat_ouro.Ka = {0.24, 0.19, 0.07};
     mat_ouro.Kd = {0.75, 0.60, 0.22};
@@ -93,50 +98,61 @@ int main() {
     mat_rubi.Ke = {0.72, 0.62, 0.62};
     mat_rubi.shininess = 76.8;
 
-    // ==================================================
-    // 3. CENA (Coerência Temática e Positiva)
-    // ==================================================
+    Material mat_parede; // Pilar
+    mat_parede.Ka = {0.2, 0.2, 0.2};
+    mat_parede.Kd = {0.9, 0.9, 0.9};
+    mat_parede.Ke = {0.0, 0.0, 0.0};
+    mat_parede.shininess = 1;
+
+    // --------- Cena -----------
+
     std::vector<Objeto*> cena;
 
-    // 1. O Chão (Plano XZ em Y=0)
-    Plano* chao = new Plano(mat_piso);
-    chao->setTransform(Mat4::translate(0, 0, 0)); 
-    cena.push_back(chao);
+    // //Chão (Plano XZ)
+    // Plano* chao = new Plano(mat_piso);
+    // chao->setTransform(Mat4::translate(0, 0, 0)); 
+    // cena.push_back(chao);
 
-    // 2. Mesa (Cubo esticado)
+    //Parede (Plano XY)
+    Plano* parede = new Plano(mat_parede);
+    Mat4 trParede = Mat4::translate(0, 0, -200) * Mat4::rotateX(90);
+    parede->setTransform(trParede); 
+    cena.push_back(parede);
+
+    // Cubo esticado
     Cubo* pedestal = new Cubo(20.0, mat_piso); 
-    // X=50, Y=10, Z=50
-    Mat4 trPedestal = Mat4::translate(50, 10, 50) * Mat4::scale(4.0, 1.0, 2.0); 
+    Mat4 trPedestal = Mat4::translate(0, 0, 0) * Mat4::scale(4.0, 1.0, 2.0); 
     pedestal->setTransform(trPedestal);
     cena.push_back(pedestal);
 
-    // 3. Esfera de Ouro
-    Esfera* bola = new Esfera(15.0, mat_ouro);
-    bola->setTransform(Mat4::translate(50, 35, 50));
-    cena.push_back(bola);
+    // //Esfera
+    // Esfera* bola = new Esfera(15.0, mat_ouro);
+    // bola->setTransform(Mat4::translate(0, 0, 0));
+    // cena.push_back(bola);
 
-    // 4. Cone Azul (Rotação Arbitrária aqui!)
-    Cone* cone = new Cone(10.0, 30.0, mat_azul);
-    // REQUISITO 1.4.2: Rotaciona 45 graus no eixo diagonal (1, 0, 1)
-    Mat4 trCone = Mat4::translate(20, 40, 50) * Mat4::rotate(45.0, {1, 0, 1}); 
-    cone->setTransform(trCone);
-    cena.push_back(cone);
+    // //Cone
+    // Cone* cone = new Cone(10.0, 30.0, mat_azul);
+    // // REQUISITO 1.4.2: Rotaciona 45 graus no eixo diagonal (1, 0, 1)
+    // Mat4 trCone = Mat4::translate(0, 40, 0) * Mat4::rotate(90.0, {0, 1, 0}); 
+    // cone->setTransform(trCone);
+    // cena.push_back(cone);
 
-    // 5. Pilar de Rubi (Cilindro)
-    Cilindro* pilar = new Cilindro(5.0, 100.0, mat_rubi);
-    pilar->setTransform(Mat4::translate(100, 0, 0)); 
-    cena.push_back(pilar);
+    // //Pilar
+    // Cilindro* pilar = new Cilindro(5.0, 100.0, mat_rubi); 
+    // Mat4 shearCilindro = Mat4::shear(-0.5, 0, 0, 0, 0, 0);
+    // Mat4 trCilindro = Mat4::translate(30, 0, 0) * shearCilindro;
+    // pilar->setTransform(trCilindro); 
+    // cena.push_back(pilar);
 
-    // ==================================================
-    // 4. LUZES
-    // ==================================================
+    // --------- Luzes -----------
+
     std::vector<Light> luzes;
 
     // Pontual
     Light lampada;
     lampada.type = POINT;
-    lampada.position = {50, 100, 50}; 
-    lampada.intensity = {0.6, 0.6, 0.6};
+    lampada.position = {-30, 30, -40}; 
+    lampada.intensity = {0.4, 0.4, 0.4};
     luzes.push_back(lampada);
 
     // // Spot
@@ -148,18 +164,17 @@ int main() {
     // spot.cutoff = 15; 
     // luzes.push_back(spot);
 
-    // // Direcional
-    // Light sol;
-    // sol.type = DIRECTIONAL;
-    // sol.direction = {-1, -0.5, 0};   
-    // sol.intensity = {0.3, 0.3, 0.4}; 
-    // luzes.push_back(sol);
+    // Direcional
+    Light sol;
+    sol.type = DIRECTIONAL;
+    sol.direction = {-1, -0.5, 0};   
+    sol.intensity = {1, 1, 1}; 
+    luzes.push_back(sol);
     
-    Vec3 luzAmbiente = {0.2, 0.2, 0.2};
+    Vec3 luzAmbiente = {0.6, 0.6, 0.6};
 
-    // ==================================================
-    // 5. RENDERIZAÇÃO
-    // ==================================================
+    // --------- Renderização -----------
+
     std::vector<std::vector<Vec3>> imagem(nLin, std::vector<Vec3>(nCol));
     double Dx = wJanela / nCol;
     double Dy = hJanela / nLin;
@@ -178,12 +193,12 @@ int main() {
             
             Vec3 origem_local, direcao_local;
 
-            // --- LÓGICA DE PROJEÇÃO ---
+            // Lógica de projeção
             if (tipoProjecao == 1) { // Ortográfica
                 origem_local = {x_cam, y_cam, 0};
                 direcao_local = {0, 0, -1};
             } 
-            else if (tipoProjecao == 2) { // Oblíqua (Bonus)
+            else if (tipoProjecao == 2) { // Oblíqua
                 origem_local = {x_cam, y_cam, 0};
                 // Direção inclinada: mantemos -1 em Z, mas deslocamos X e Y
                 // Isso faz as laterais dos objetos aparecerem
