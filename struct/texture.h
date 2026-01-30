@@ -6,7 +6,6 @@
 #include "vec3.h"
 
 // Biblioteca para leitura de imagens
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 class Texture {
@@ -21,7 +20,7 @@ public:
         data = stbi_load(filepath.c_str(), &width, &height, &channels, 3);
         
         if (!data) {
-            std::cout << "ERRO: Falha ao carregar textura: " << filepath << std::endl;
+            std::cout << "Erro: Falha ao carregar textura: " << filepath << std::endl;
             return false;
         }
         std::cout << "Textura carregada: " << filepath << " (" << width << "x" << height << ")" << std::endl;

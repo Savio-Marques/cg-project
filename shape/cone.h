@@ -8,11 +8,13 @@ public:
     double raio;
     double altura;
 
-    // Construtor simplificado (sem base/eixo)
+    // Construtor
     Cone(double r, double h, const Material& m);
 
     // Sobrescreve a função local
     virtual bool intersectaLocal(const Ray& r_local, double t_min, double t_max, HitRecord& rec) const override;
+
+    std::string getTipo() const override { return "Cone"; }
 };
 
 #endif

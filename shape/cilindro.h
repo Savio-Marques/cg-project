@@ -8,8 +8,7 @@ public:
     double raio;
     double altura;
 
-    // Construtor simplificado:
-    // Não pede mais base nem eixo. O cilindro local nasce na origem (0,0,0) subindo no eixo Y.
+    // Cilindro local nasce na origem (0,0,0) subindo no eixo Y.
     Cilindro(double r, double h, const Material& m);
     
     // Função auxiliar interna para testar as tampas
@@ -17,6 +16,8 @@ public:
 
     // Sobrescreve a função local
     virtual bool intersectaLocal(const Ray& r_local, double t_min, double t_max, HitRecord& rec) const override;
+
+    std::string getTipo() const override { return "Cilindro"; }
 };
 
 #endif

@@ -10,6 +10,8 @@ public:
 
     Esfera(double r, const Material& m);
     virtual bool intersectaLocal(const Ray& r, double t_min, double t_max, HitRecord& rec) const override;
+
+    std::string getTipo() const override { return "Esfera"; }
 };
 
 #endif

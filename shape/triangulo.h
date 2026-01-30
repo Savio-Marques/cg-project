@@ -5,14 +5,16 @@
 
 class Triangulo : public Objeto {
 public:
-    Vec3 v0, v1, v2; // Vértices no espaço LOCAL
-    Vec3 normal;     // Normal no espaço LOCAL (pré-calculada)
+    Vec3 v0, v1, v2; // Vértices no espaço local
+    Vec3 normal;     // Normal no espaço local
 
-    // O construtor recebe os vértices como são no espaço local
+    // O construtor
     Triangulo(const Vec3& _v0, const Vec3& _v1, const Vec3& _v2, const Material& m);
 
     // Sobrescrevemos a função local
     virtual bool intersectaLocal(const Ray& r_local, double t_min, double t_max, HitRecord& rec) const override;
+
+    std::string getTipo() const override { return "Triangulo"; }
 };
 
 #endif

@@ -1,30 +1,27 @@
 #include "cilindro.h"
 #include <cmath>
-#include <algorithm> // Para std::min/max se precisar
+#include <algorithm>
 
 Cilindro::Cilindro(double r, double h, const Material& m) 
     : raio(r), altura(h) { 
     mat = m; 
 }
 
-// Helper para as tampas (Base e Topo)
+// Helper para base e topo
 bool Cilindro::intersectaDisco(const Ray& r, double y_plano, const Vec3& normal, double& t_out) const {
-    // Intersecção com plano horizontal (Y constante)
-    // O denominador é simplesmente a componente Y da direção (pois normal é 0,1,0 ou 0,-1,0)
+    // Intersecção com plano horizontal
     double denom = r.direcao.dot(normal);
 
     if (std::abs(denom) < 1e-6) return false; // Raio paralelo à tampa
 
     // t = (ponto_plano - origem) . normal / denom
-    // Como o plano é horizontal, isso simplifica para:
     double t = (y_plano - r.origem.y) / r.direcao.y; // Se normal for (0,1,0)
-    // Nota: O sinal se ajusta sozinho na divisão.
 
     if (t <= 0) return false; 
     
-    // Verifica se bateu dentro do círculo (Raio 2D no plano XZ)
+    // Verifica se bateu dentro do círculo
     Vec3 p = r.origem + r.direcao * t;
-    double distQuadrada = p.x*p.x + p.z*p.z; // x² + z² <= r²
+    double distQuadrada = p.x*p.x + p.z*p.z;
 
     if (distQuadrada <= raio * raio) {
         t_out = t;
@@ -37,9 +34,7 @@ bool Cilindro::intersectaLocal(const Ray& r, double t_min, double t_max, HitReco
     bool hit = false;
     double t_closest = t_max;
 
-    // --- 1. CORPO DO CILINDRO (Lateral) ---
-    // Equação do cilindro infinito no eixo Y: x² + z² = r²
-    // (Ignoramos o Y na equação quadrática)
+    // Corpo do cilindro
     double a = r.direcao.x * r.direcao.x + r.direcao.z * r.direcao.z;
     double b = 2.0 * (r.origem.x * r.direcao.x + r.origem.z * r.direcao.z);
     double c = r.origem.x * r.origem.x + r.origem.z * r.origem.z - raio * raio;
@@ -51,7 +46,7 @@ bool Cilindro::intersectaLocal(const Ray& r, double t_min, double t_max, HitReco
         double t1 = (-b - sqrtDelta) / (2.0 * a);
         double t2 = (-b + sqrtDelta) / (2.0 * a);
 
-        // Lambda para testar a altura (Corte do cilindro finito)
+        // Lambda para testar a altura
         auto check_altura = [&](double t) {
             if (t > t_min && t < t_closest) {
                 double y = r.origem.y + r.direcao.y * t;
@@ -73,7 +68,7 @@ bool Cilindro::intersectaLocal(const Ray& r, double t_min, double t_max, HitReco
         check_altura(t2);
     }
 
-    // --- 2. TAMPAS (Discos) ---
+    // Tampas
     double t_cap;
 
     // Base (Y = 0, Normal aponta para baixo 0,-1,0)

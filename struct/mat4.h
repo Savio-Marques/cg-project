@@ -5,17 +5,21 @@
 #include <iostream>
 #include "vec3.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 struct Mat4 {
     double m[4][4]; // Matriz 4x4
 
-    // Construtor: Cria uma matriz Identidade por padrão
+    // Cria uma matriz Identidade por padrão
     Mat4() {
         for(int i=0; i<4; i++)
             for(int j=0; j<4; j++)
                 m[i][j] = (i == j) ? 1.0 : 0.0;
     }
 
-    // Permite fazer: MatrizFinal = Translação * Rotação * Escala
+    // MatrizFinal = Translação * Rotação * Escala
     Mat4 operator*(const Mat4& n) const {
         Mat4 res;
         for(int i=0; i<4; i++) {
@@ -29,8 +33,8 @@ struct Mat4 {
         return res;
     }
 
-    // Transforma um ponto (w = 1). Usado para origem do raio e vértices.
-    // Translação afeta pontos.
+    // Transforma um ponto (w = 1) (para origem do raio e vértices)
+    // Translação afeta pontos
     Vec3 point(const Vec3& v) const {
         double x = m[0][0]*v.x + m[0][1]*v.y + m[0][2]*v.z + m[0][3];
         double y = m[1][0]*v.x + m[1][1]*v.y + m[1][2]*v.z + m[1][3];
@@ -43,8 +47,8 @@ struct Mat4 {
         return {x, y, z};
     }
 
-    // Transforma um vetor (w = 0). Usado para direção do raio.
-    // Translação não afeta vetores (só rotação e escala).
+    // Transforma um vetor (w = 0). Usado para direção do raio
+    // Translação não afeta vetores (só rotação e escala)
     Vec3 vector(const Vec3& v) const {
         double x = m[0][0]*v.x + m[0][1]*v.y + m[0][2]*v.z;
         double y = m[1][0]*v.x + m[1][1]*v.y + m[1][2]*v.z;
@@ -107,7 +111,7 @@ struct Mat4 {
 
     // Rotação em torno de um eixo arbitrário por um ângulo (em graus)
     static Mat4 rotate(double angle, Vec3 axis) {
-        Mat4 res;
+        Mat4 res; //
         double rad = angle * M_PI / 180.0;
         double c = cos(rad);
         double s = sin(rad);
@@ -122,7 +126,7 @@ struct Mat4 {
         return res;
     }
 
-    //Cisalhamento
+    // Cisalhamento
     static Mat4 shear(double xy, double xz, double yx, double yz, double zx, double zy) {
         Mat4 res;
         res.m[0][1] = xy; res.m[0][2] = xz;
@@ -177,11 +181,7 @@ struct Mat4 {
     }
 
 
-    // --------- Sistema de coordenadas de câmera (LookAt) -----------
-    // Cria a Matriz "World to Camera"
-    // eye: Onde a câmera está
-    // center: Para onde ela está olhando
-    // up: Qual direção é pra cima
+    // Sistema de coordenadas de câmera (LookAt)
     static Mat4 lookAt(Vec3 eye, Vec3 center, Vec3 up) {
         Vec3 f = (center - eye).normalize(); 
         Vec3 w = -f;

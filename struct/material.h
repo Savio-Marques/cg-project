@@ -3,16 +3,19 @@
 
 #include "vec3.h"
 #include <cmath>
+#include "struct/texture.h"
+
+class Texture;
 
 //Guarda as propriedades do material
 struct Material {
     // Modelo phong de iluminação
     Vec3 Ka, Kd, Ke;
-    // "Dureza" do brilho
+    // Brilho
     double shininess;
     
     bool useTexture = false;
-    void* texturePtr = nullptr; 
+    Texture* texturePtr = nullptr; 
 };
 
 

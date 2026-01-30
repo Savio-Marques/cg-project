@@ -4,8 +4,6 @@ Cubo::Cubo(double a, const Material& m) {
     mat = m;
     double meia = a / 2.0;
 
-    // Vértices centrados na origem (0,0,0)
-    // X, Y e Z vão de -meia até +meia
     Vec3 v0 = {-meia, -meia,  meia}; // Frente Esq Baixo
     Vec3 v1 = { meia, -meia,  meia}; // Frente Dir Baixo
     Vec3 v2 = { meia, -meia, -meia}; // Trás Dir Baixo
@@ -16,7 +14,7 @@ Cubo::Cubo(double a, const Material& m) {
     Vec3 v6 = { meia,  meia, -meia}; // Trás Dir Cima
     Vec3 v7 = {-meia,  meia, -meia}; // Trás Esq Cima
 
-    // --- CRIAÇÃO DAS FACES (12 Triângulos) ---
+    // Criação das faces
     // Frente
     triangulos.push_back(Triangulo(v0, v1, v5, m));
     triangulos.push_back(Triangulo(v0, v5, v4, m));
@@ -49,11 +47,9 @@ bool Cubo::intersectaLocal(const Ray& r, double t_min, double t_max, HitRecord& 
 
     // Testamos contra todos os triângulos da lista
     for (const auto& tri : triangulos) {
-        
-        // DICA IMPORTANTE:
-        // Como 'tri' é um Objeto, ele tem sua própria matriz. Mas aqui dentro do cubo, 
-        // a matriz dele é Identidade (padrão). Então chamar 'intersectaLocal' direto
-        // é mais rápido e matematicamente correto, pois o raio 'r' já é local do Cubo.
+
+        //Tiangulo tem sua própria matriz, mas dentro do cubo a matriz é a identidade
+        //Chamado 'intersectaLocal' direto pois é mais rápido
         if (tri.intersectaLocal(r, t_min, t_mais_proximo, temp_rec)) {
             acertou_algum = true;
             t_mais_proximo = temp_rec.t;
