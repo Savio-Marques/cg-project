@@ -8,7 +8,7 @@ Um **Motor de Ray Tracing 3D interativo** desenvolvido do zero em C++17 para a d
 
 - 🔺 **Primitivas Geométricas Analíticas:** Suporte completo para Esferas, Cubos/Paralelepípedos, Cilindros, Cones, Planos e Triângulos.
 - 🔄 **Transformações Geométricas 3D de Matrizes 4x4:** Translação, Escala, Rotação nos eixos X, Y e Z, Rotação em Eixo Arbitrário e Cisalhamento (*Shear*).
-- 💡 **Modelo de Iluminação Phong/Blinn-Phong:** Cálculo de componentes Ambiente ($K_a$), Difusa ($K_d$), Especular ($K_s$), Emissiva ($K_e$) e brilho (*Shininess*).
+- 💡 **Modelo de Iluminação Phong/Blinn-Phong:** Cálculo de componentes Ambiente (`Ka`), Difusa (`Kd`), Especular (`Ks`), Emissiva (`Ke`) e brilho (*Shininess*).
 - 🔦 **Múltiplas Fontes de Luz:**
   - **Luz Ambiente Global**
   - **Luz Pontual (*Point Light*)**
@@ -143,29 +143,51 @@ Ao executar a aplicação, a janela exibirá um **Painel de Controle ImGui** à 
 ## 🧮 Fundamentos Teóricos e Algoritmos
 
 ### 1. Equação do Raio
+
 Um raio é representado parametricamente por:
-$$P(t) = \mathbf{O} + t \cdot \mathbf{D}$$
-Onde $\mathbf{O}$ é a origem do raio, $\mathbf{D}$ é o vetor direção normalizado e $t \ge 0$ é o parâmetro de distância ao longo do raio.
+
+$$
+P(t) = O + t \cdot D
+$$
+
+Onde $O$ é a origem do raio, $D$ é o vetor direção normalizado e $t \ge 0$ é o parâmetro de distância ao longo do raio.
 
 ### 2. Transformação de Espaço de Objeto (Object Space)
+
 Cada objeto possui uma matriz de transformação $M$. Para testar a interseção de um raio no espaço do objeto:
+
 1. O raio é transformado para o espaço local usando a matriz inversa $M^{-1}$:
-   $$\mathbf{O}_{local} = M^{-1} \mathbf{O}_{world}$$
-   $$\mathbf{D}_{local} = M^{-1} \mathbf{D}_{world}$$
+
+$$
+O_{local} = M^{-1} \cdot O_{world}
+$$
+
+$$
+D_{local} = M^{-1} \cdot D_{world}
+$$
+
 2. A interseção analítica é calculada no espaço local do objeto.
-3. A normal calculada $\mathbf{N}_{local}$ é convertida de volta para o espaço do mundo multiplicando pela transposta da inversa:
-   $$\mathbf{N}_{world} = (M^{-1})^T \mathbf{N}_{local}$$
+3. A normal calculada $N_{local}$ é convertida de volta para o espaço do mundo multiplicando pela transposta da inversa:
+
+$$
+N_{world} = (M^{-1})^T \cdot N_{local}
+$$
 
 ### 3. Modelo de Iluminação Phong
+
 Para cada ponto de interseção que não esteja oculto por sombras, a cor final é calculada por:
-$$I = I_a K_a + \sum_{i} \left[ I_{d,i} K_d (\mathbf{N} \cdot \mathbf{L}_i) + I_{s,i} K_s (\mathbf{V} \cdot \mathbf{R}_i)^n \right] + K_e$$
+
+$$
+I = I_a \cdot K_a + \sum_{i} \left[ I_{d,i} \cdot K_d \cdot (N \cdot L_i) + I_{s,i} \cdot K_s \cdot (V \cdot R_i)^n \right] + K_e
+$$
+
 Onde:
 - $K_a, K_d, K_s, K_e$: Coeficientes do material (Ambiente, Difusa, Especular, Emissiva).
 - $n$: Expoente de especularidade (*Shininess*).
-- $\mathbf{N}$: Vetor normal da superfície.
-- $\mathbf{L}_i$: Vetor em direção à fonte de luz $i$.
-- $\mathbf{V}$: Vetor em direção à câmera.
-- $\mathbf{R}_i$: Vetor de reflexão perfeita da luz.
+- $N$: Vetor normal da superfície.
+- $L_i$: Vetor em direção à fonte de luz $i$.
+- $V$: Vetor em direção à câmera.
+- $R_i$: Vetor de reflexão perfeita da luz.
 
 ---
 
